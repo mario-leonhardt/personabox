@@ -136,6 +136,15 @@ export default function Home() {
     e.target.value = ''
   }
 
+  function handleDrop(e: React.DragEvent<HTMLDivElement>) {
+    e.preventDefault()
+    const file = e.dataTransfer.files?.[0]
+    if (!file) return
+    const reader = new FileReader()
+    reader.onload = ev => addContent(ev.target?.result as string, 'DATEI')
+    reader.readAsText(file)
+  }
+
   async function analyzeBox() {
     if (!active || !active.contentItems.length) return
     setAnalyzing(true)
@@ -412,7 +421,10 @@ export default function Home() {
                     LinkedIn-Posts, Interviews, Zitate, Beobachtungen. Claude strukturiert alles selbst.
                   </p>
 
-                  <div onClick={() => fileInputRef.current?.click()}
+                  <div
+                    onClick={() => fileInputRef.current?.click()}
+                    onDrop={handleDrop}
+                    onDragOver={e => e.preventDefault()}
                     style={{ border: '1px dashed var(--border)', borderRadius: 4, padding: 24, textAlign: 'center', color: 'var(--muted)', cursor: 'pointer', marginBottom: 16 }}>
                     ↓ Datei ablegen oder klicken (.txt, .md)
                   </div>
