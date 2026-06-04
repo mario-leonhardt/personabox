@@ -8,16 +8,17 @@ export interface Persona {
   id: string
   firstname: string
   lastname: string
-  name: string // computed: firstname + lastname
+  name: string
   gender: string
+  email: string
   title: string
   company: string
   industry: string
   location: string
   birthday: string
   language: 'formal' | 'informal'
-  goal: string // berufliche Ziele
-  privateGoal: string // private Ziele
+  goal: string
+  privateGoal: string
   product: string
   keywords: string[]
   contentItems: ContentItem[]

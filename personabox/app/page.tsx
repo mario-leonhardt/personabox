@@ -17,6 +17,7 @@ export default function Home() {
   const [generating, setGenerating] = useState(false)
   const [analyzing, setAnalyzing] = useState(false)
   const [status, setStatus] = useState('')
+  const [theme, setTheme] = useState<'dark' | 'light'>('dark')
   const fileInputRef = useRef<HTMLInputElement>(null)
   const firstnameRef = useRef<HTMLInputElement>(null)
 
@@ -26,6 +27,9 @@ export default function Home() {
   useEffect(() => {
     if (showModal) setTimeout(() => firstnameRef.current?.focus(), 100)
   }, [showModal])
+  useEffect(() => {
+    document.documentElement.setAttribute('data-theme', theme)
+  }, [theme])
 
   async function loadPersonas() {
     const res = await fetch('/api/personas')
@@ -65,7 +69,7 @@ export default function Home() {
       id: Date.now().toString(),
       firstname, lastname,
       name: [firstname, lastname].filter(Boolean).join(' '),
-      gender: '',
+      gender: '', email: '',
       title: '', company: '', industry: '', location: '', birthday: '',
       language: 'formal', goal: '', privateGoal: '', product: '',
       keywords: [], contentItems: []
@@ -149,6 +153,7 @@ export default function Home() {
           firstname: r.firstname || active.firstname,
           lastname: r.lastname || active.lastname,
           gender: r.gender || active.gender,
+          email: r.email || active.email,
           title: r.title || active.title,
           company: r.company || active.company,
           industry: r.industry || active.industry,
@@ -216,7 +221,12 @@ export default function Home() {
     navigator.clipboard.writeText(`Betreff: ${e.subject}\n\n${e.body}`)
   }
 
-  // ── Styles ────────────────────────────────────────────────────
+  function openInMail(i: number) {
+    const e = emails[i]
+    const to = active?.email || ''
+    window.location.href = `mailto:${to}?subject=${encodeURIComponent(e.subject)}&body=${encodeURIComponent(e.body)}`
+  }
+
   const css = {
     input: { width: '100%', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 3, padding: '10px 14px', color: 'var(--text)', fontFamily: 'DM Mono, monospace', fontSize: 13 } as React.CSSProperties,
     textarea: { width: '100%', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 3, padding: '10px 14px', color: 'var(--text)', fontFamily: 'DM Mono, monospace', fontSize: 13, resize: 'vertical', minHeight: 80 } as React.CSSProperties,
@@ -224,7 +234,7 @@ export default function Home() {
     field: { marginBottom: 20 } as React.CSSProperties,
     sectionTitle: { fontSize: 10, letterSpacing: '0.15em', textTransform: 'uppercase', color: 'var(--muted)', marginBottom: 16, marginTop: 32, paddingBottom: 8, borderBottom: '1px solid var(--border)' } as React.CSSProperties,
     btn: { display: 'inline-flex', alignItems: 'center', gap: 8, padding: '10px 16px', borderRadius: 3, fontFamily: 'DM Mono, monospace', fontSize: 12, cursor: 'pointer', border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text)', letterSpacing: '0.05em', width: '100%', justifyContent: 'center' } as React.CSSProperties,
-    btnPrimary: { background: 'var(--accent)', color: '#0e0e0e', border: '1px solid var(--accent)', fontWeight: 500, padding: '10px 20px', borderRadius: 3, fontFamily: 'DM Mono, monospace', fontSize: 12, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 8 } as React.CSSProperties,
+    btnPrimary: { background: 'var(--accent)', color: theme === 'dark' ? '#0e0e0e' : '#ffffff', border: '1px solid var(--accent)', fontWeight: 500, padding: '10px 20px', borderRadius: 3, fontFamily: 'DM Mono, monospace', fontSize: 12, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 8 } as React.CSSProperties,
     btnSmall: { padding: '7px 12px', fontSize: 11, borderRadius: 3, fontFamily: 'DM Mono, monospace', cursor: 'pointer', border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text)' } as React.CSSProperties,
     tag: { background: 'rgba(200,240,80,0.1)', border: '1px solid rgba(200,240,80,0.3)', color: 'var(--accent)', padding: '3px 10px', borderRadius: 20, fontSize: 11, display: 'inline-flex', alignItems: 'center', gap: 6 } as React.CSSProperties,
   }
@@ -233,9 +243,15 @@ export default function Home() {
 
   return (
     <>
-      <header style={{ borderBottom: '1px solid var(--border)', padding: '24px 40px', display: 'flex', alignItems: 'baseline', gap: 16 }}>
-        <h1 style={{ fontFamily: 'Instrument Serif, serif', fontSize: 28, fontWeight: 400, color: 'var(--accent)' }}>Persona Box</h1>
-        <span style={{ color: 'var(--muted)', fontSize: 11, letterSpacing: '0.1em', textTransform: 'uppercase' }}>Outreach Intelligence System</span>
+      <header style={{ borderBottom: '1px solid var(--border)', padding: '24px 40px', display: 'flex', alignItems: 'center', gap: 16 }}>
+        <h1 style={{ fontFamily: 'Instrument Serif, serif', fontSize: 28, fontWeight: 400, color: 'var(--accent)', flex: 1 }}>Persona Box</h1>
+        <span style={{ color: 'var(--muted)', fontSize: 11, letterSpacing: '0.1em', textTransform: 'uppercase' }}>Outreach Intelligence</span>
+        <button
+          onClick={() => setTheme(t => t === 'dark' ? 'light' : 'dark')}
+          style={{ ...css.btnSmall, width: 'auto', padding: '6px 14px', fontSize: 16, marginLeft: 16 }}
+          title="Theme wechseln">
+          {theme === 'dark' ? '☀️' : '🌙'}
+        </button>
       </header>
 
       <div style={{ display: 'grid', gridTemplateColumns: '360px 1fr', minHeight: 'calc(100vh - 73px)' }}>
@@ -261,6 +277,7 @@ export default function Home() {
                     <div style={{ fontSize: 10, color: 'var(--muted)', marginTop: 2 }}>
                       {p.gender ? `${p.gender} · ` : ''}{p.company || p.title || '–'} · {(p.contentItems || []).length} Inhalte
                     </div>
+                    {p.email && <div style={{ fontSize: 10, color: 'var(--muted)', marginTop: 1 }}>{p.email}</div>}
                   </div>
                   <button onClick={e => deletePersona(p.id, e)} style={{ background: 'none', border: 'none', color: 'var(--muted)', cursor: 'pointer', fontSize: 18 }}>×</button>
                 </div>
@@ -278,7 +295,6 @@ export default function Home() {
             </div>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', flex: 1 }}>
-              {/* TABS */}
               <div style={{ display: 'flex', borderBottom: '1px solid var(--border)' }}>
                 {([['info','Persona'], ['content','Box'], ['sequence','E-Mail Sequenz']] as const).map(([tab, label]) => (
                   <div key={tab}
@@ -304,7 +320,11 @@ export default function Home() {
                     </div>
                     <div style={css.field}>
                       <label style={css.label}>Geschlecht</label>
-                      <input style={css.input} value={active.gender || ''} onChange={e => updateActive({ gender: e.target.value })} placeholder="z.B. männlich, weiblich, divers" />
+                      <input style={css.input} value={active.gender || ''} onChange={e => updateActive({ gender: e.target.value })} placeholder="männlich, weiblich, divers" />
+                    </div>
+                    <div style={css.field}>
+                      <label style={css.label}>E-Mail</label>
+                      <input style={css.input} type="email" value={active.email || ''} onChange={e => updateActive({ email: e.target.value })} placeholder="name@unternehmen.de" />
                     </div>
                     <div style={css.field}>
                       <label style={css.label}>Geburtstag</label>
@@ -340,7 +360,7 @@ export default function Home() {
                   <div style={css.sectionTitle}>Ziele</div>
                   <div style={css.field}>
                     <label style={css.label}>Berufliche Ziele</label>
-                    <textarea style={css.textarea} value={active.goal || ''} onChange={e => updateActive({ goal: e.target.value })} placeholder="Was treibt diese Person beruflich an? Prioritäten, Ambitionen..." />
+                    <textarea style={css.textarea} value={active.goal || ''} onChange={e => updateActive({ goal: e.target.value })} placeholder="Was treibt diese Person beruflich an?" />
                   </div>
                   <div style={css.field}>
                     <label style={css.label}>Private Ziele</label>
@@ -389,7 +409,7 @@ export default function Home() {
                     )}
                   </div>
                   <p style={{ color: 'var(--muted)', fontSize: 12, margin: '12px 0 20px', lineHeight: 1.7 }}>
-                    LinkedIn-Posts, Interviews, Zitate, Beobachtungen zum Stil, zur Persönlichkeit. Claude strukturiert alles selbst.
+                    LinkedIn-Posts, Interviews, Zitate, Beobachtungen. Claude strukturiert alles selbst.
                   </p>
 
                   <div onClick={() => fileInputRef.current?.click()}
@@ -419,6 +439,11 @@ export default function Home() {
               {activeTab === 'sequence' && (
                 <div style={{ padding: '32px 40px', flex: 1, overflowY: 'auto' }}>
                   <div style={{ ...css.sectionTitle, marginTop: 0 }}>E-Mail Sequenz für {displayName}</div>
+                  {active.email && (
+                    <div style={{ fontSize: 12, color: 'var(--muted)', marginBottom: 20, marginTop: -8 }}>
+                      → {active.email}
+                    </div>
+                  )}
 
                   <div style={{ display: 'flex', gap: 16, marginBottom: 24, flexWrap: 'wrap', alignItems: 'flex-end' }}>
                     <div style={css.field}>
@@ -449,7 +474,12 @@ export default function Home() {
                       <div style={{ background: 'var(--surface)', padding: '12px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid var(--border)' }}>
                         <span style={{ fontSize: 10, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--accent)' }}>E-Mail {email.num}</span>
                         <span style={{ fontFamily: 'Instrument Serif, serif', fontSize: 15, fontStyle: 'italic', flex: 1, margin: '0 16px' }}>{email.subject}</span>
-                        <button style={css.btnSmall} onClick={() => copyEmail(i)}>Kopieren</button>
+                        <div style={{ display: 'flex', gap: 6 }}>
+                          {active.email && (
+                            <button style={css.btnSmall} onClick={() => openInMail(i)}>↗ Öffnen</button>
+                          )}
+                          <button style={css.btnSmall} onClick={() => copyEmail(i)}>Kopieren</button>
+                        </div>
                       </div>
                       <div style={{ padding: '20px 24px', fontSize: 13, lineHeight: 1.8, whiteSpace: 'pre-wrap' }}>{email.body}</div>
                       <div style={{ padding: '8px 24px 14px', fontSize: 10, letterSpacing: '0.05em', color: 'var(--muted)', borderTop: '1px solid var(--border)', background: 'var(--surface)' }}>
