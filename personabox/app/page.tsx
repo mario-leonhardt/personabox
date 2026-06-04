@@ -156,6 +156,10 @@ export default function Home() {
         body: JSON.stringify({ persona: active })
       })
       const data = await res.json()
+      if (data.error) {
+        setStatus(`Fehler: ${data.error}`)
+        return
+      }
       if (data.result) {
         const r = data.result
         updateActive({
@@ -175,12 +179,14 @@ export default function Home() {
         })
         setStatus('Analyse abgeschlossen')
         setActiveTab('info')
+      } else {
+        setStatus('Fehler: Kein Ergebnis von der API')
       }
-    } catch {
-      setStatus('Fehler bei der Analyse')
+    } catch (err: any) {
+      setStatus(`Fehler: ${err.message}`)
     } finally {
       setAnalyzing(false)
-      setTimeout(() => setStatus(''), 3000)
+      setTimeout(() => setStatus(''), 8000)
     }
   }
 
