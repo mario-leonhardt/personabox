@@ -4,6 +4,12 @@ export interface ContentItem {
   addedAt: string
 }
 
+export interface ImageItem {
+  data: string      // base64 data URL (compressed JPEG)
+  name: string
+  addedAt: string
+}
+
 export interface Persona {
   id: string
   firstname: string
@@ -22,6 +28,7 @@ export interface Persona {
   product: string
   keywords: string[]
   contentItems: ContentItem[]
+  imageItems: ImageItem[]
   analysis?: string
   created_at?: string
 }
