@@ -2,6 +2,7 @@ export interface ContentItem {
   text: string
   type: string
   addedAt: string
+  filename?: string
 }
 
 export interface Persona {

@@ -17,6 +17,7 @@ export default function Home() {
   const [generating, setGenerating] = useState(false)
   const [analyzing, setAnalyzing] = useState(false)
   const [status, setStatus] = useState('')
+  const [viewItem, setViewItem] = useState<{ text: string; filename?: string } | null>(null)
   const [theme, setTheme] = useState<'dark' | 'light'>('dark')
   const fileInputRef = useRef<HTMLInputElement>(null)
   const firstnameRef = useRef<HTMLInputElement>(null)
@@ -130,10 +131,27 @@ export default function Home() {
   function handleFile(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
     if (!file) return
+    const filename = file.name
     const reader = new FileReader()
-    reader.onload = ev => addContent(ev.target?.result as string, 'DATEI')
+    reader.onload = ev => {
+      const text = ev.target?.result as string
+      if (!text.trim() || !active) return
+      const item: ContentItem = { text: text.trim(), type: 'DATEI', addedAt: new Date().toISOString(), filename }
+      updateActive({ contentItems: [...(active.contentItems || []), item] })
+      setContentInput('')
+    }
     reader.readAsText(file)
     e.target.value = ''
+  }
+
+  function downloadItem(item: { text: string; filename?: string }) {
+    const blob = new Blob([item.text], { type: 'text/plain' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = item.filename || 'datei.txt'
+    a.click()
+    URL.revokeObjectURL(url)
   }
 
   async function analyzeBox() {
@@ -421,7 +439,16 @@ export default function Home() {
                   {(active.contentItems || []).map((item, i) => (
                     <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 10, background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 3, padding: '10px 14px', marginBottom: 8 }}>
                       <div style={{ fontSize: 9, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--accent)', flexShrink: 0, marginTop: 3, width: 60 }}>{item.type}</div>
-                      <div style={{ flex: 1, fontSize: 12, maxHeight: 80, overflow: 'hidden', whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{item.text}</div>
+                      <div style={{ flex: 1, fontSize: 12, maxHeight: 80, overflow: 'hidden', whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
+                        {item.filename && <span style={{ color: 'var(--muted)', fontSize: 10, display: 'block', marginBottom: 4 }}>{item.filename}</span>}
+                        {item.text}
+                      </div>
+                      {item.type === 'DATEI' && (
+                        <button onClick={() => setViewItem(item)} style={{ ...css.btnSmall, width: 'auto', fontSize: 10 }}>Anzeigen</button>
+                      )}
+                      {item.type === 'DATEI' && (
+                        <button onClick={() => downloadItem(item)} style={{ ...css.btnSmall, width: 'auto', fontSize: 10 }}>Speichern</button>
+                      )}
                       <button onClick={() => removeContent(i)} style={{ background: 'none', border: 'none', color: 'var(--muted)', cursor: 'pointer', fontSize: 16 }}>×</button>
                     </div>
                   ))}
@@ -497,6 +524,35 @@ export default function Home() {
           )}
         </main>
       </div>
+
+      {/* VIEW MODAL */}
+      {viewItem && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.85)', display: 'flex', flexDirection: 'column', zIndex: 200 }}
+          onClick={() => setViewItem(null)}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 20px', background: 'var(--surface)', borderBottom: '1px solid var(--border)' }}
+            onClick={e => e.stopPropagation()}>
+            <span style={{ fontFamily: 'DM Mono, monospace', fontSize: 11, color: 'var(--muted)', letterSpacing: '0.08em' }}>{viewItem.filename || 'Datei'}</span>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <button style={{ ...css.btnSmall, width: 'auto' }} onClick={() => downloadItem(viewItem)}>↓ Speichern</button>
+              <button style={{ ...css.btnSmall, width: 'auto' }} onClick={() => setViewItem(null)}>✕ Schließen</button>
+            </div>
+          </div>
+          <div style={{ flex: 1, overflow: 'hidden' }} onClick={e => e.stopPropagation()}>
+            {viewItem.filename?.endsWith('.html') ? (
+              <iframe
+                srcDoc={viewItem.text}
+                style={{ width: '100%', height: '100%', border: 'none', background: '#fff' }}
+                sandbox="allow-scripts"
+                title={viewItem.filename}
+              />
+            ) : (
+              <pre style={{ margin: 0, padding: 24, color: 'var(--text)', fontFamily: 'DM Mono, monospace', fontSize: 12, lineHeight: 1.7, overflowY: 'auto', height: '100%', boxSizing: 'border-box', whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
+                {viewItem.text}
+              </pre>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* MODAL */}
       {showModal && (
