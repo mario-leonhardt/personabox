@@ -399,9 +399,15 @@ export default function Home() {
       })
       const duration_us = Math.round(audioBuffer.duration * 1_000_000)
       const bitmap = await createImageBitmap(canvas)
+      // Frame 1: covers full duration
       const vframe = new VideoFrame(bitmap, { timestamp: 0, duration: duration_us })
       videoEncoder.encode(vframe, { keyFrame: true })
-      vframe.close(); bitmap.close()
+      vframe.close()
+      // Frame 2: tiny duplicate at the end so players don't flash black
+      const vframe2 = new VideoFrame(bitmap, { timestamp: duration_us, duration: 40_000 })
+      videoEncoder.encode(vframe2, { keyFrame: false })
+      vframe2.close()
+      bitmap.close()
       await videoEncoder.flush()
       videoEncoder.close()
 
