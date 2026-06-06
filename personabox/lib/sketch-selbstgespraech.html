@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sketch — Selbstgespräch</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Mono:ital,wght@0,400;0,500;1,400&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --cream: #F5F0E8;
+    --ink: #1A1A1A;
+    --red: #D63B2F;
+    --warm: #E8DFC8;
+    --mid: #8A7A66;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--cream);
+    color: var(--ink);
+    font-family: 'DM Mono', monospace;
+    min-height: 100vh;
+    padding: 60px 40px;
+    position: relative;
+    overflow-x: hidden;
+  }
+
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background: 
+      repeating-linear-gradient(
+        0deg,
+        transparent,
+        transparent 28px,
+        rgba(0,0,0,0.04) 28px,
+        rgba(0,0,0,0.04) 29px
+      );
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .page {
+    max-width: 680px;
+    margin: 0 auto;
+    position: relative;
+    z-index: 1;
+  }
+
+  .header {
+    margin-bottom: 64px;
+    border-bottom: 3px solid var(--ink);
+    padding-bottom: 24px;
+  }
+
+  .label {
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--mid);
+    margin-bottom: 8px;
+  }
+
+  h1 {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: clamp(52px, 10vw, 88px);
+    line-height: 0.9;
+    letter-spacing: 0.02em;
+    color: var(--ink);
+  }
+
+  h1 span {
+    color: var(--red);
+  }
+
+  .meta {
+    display: flex;
+    gap: 32px;
+    margin-top: 16px;
+    font-size: 11px;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--mid);
+  }
+
+  .block {
+    margin-bottom: 48px;
+    opacity: 0;
+    transform: translateY(16px);
+    animation: fadeUp 0.5s ease forwards;
+  }
+
+  .block:nth-child(1) { animation-delay: 0.1s; }
+  .block:nth-child(2) { animation-delay: 0.25s; }
+  .block:nth-child(3) { animation-delay: 0.4s; }
+  .block:nth-child(4) { animation-delay: 0.55s; }
+
+  @keyframes fadeUp {
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .block-header {
+    display: flex;
+    align-items: baseline;
+    gap: 16px;
+    margin-bottom: 16px;
+  }
+
+  .block-tag {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 22px;
+    letter-spacing: 0.08em;
+    color: var(--red);
+    min-width: 90px;
+  }
+
+  .block-time {
+    font-size: 11px;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--mid);
+    border: 1px solid var(--mid);
+    padding: 3px 8px;
+  }
+
+  .block-text {
+    font-size: 16px;
+    line-height: 1.75;
+    color: var(--ink);
+    padding-left: 106px;
+    border-left: none;
+    position: relative;
+  }
+
+  .block-text::before {
+    content: '';
+    position: absolute;
+    left: 90px;
+    top: 4px;
+    bottom: 4px;
+    width: 2px;
+    background: var(--warm);
+  }
+
+  .footer {
+    margin-top: 80px;
+    padding-top: 24px;
+    border-top: 1px solid var(--mid);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    opacity: 0;
+    animation: fadeUp 0.5s ease 0.8s forwards;
+  }
+
+  .footer-name {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 28px;
+    letter-spacing: 0.1em;
+    color: var(--ink);
+  }
+
+  .footer-sub {
+    font-size: 11px;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--mid);
+    margin-top: 4px;
+  }
+
+  .duration {
+    text-align: right;
+    font-size: 11px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--mid);
+  }
+
+  .duration strong {
+    display: block;
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 36px;
+    color: var(--ink);
+    letter-spacing: 0.05em;
+    line-height: 1;
+  }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <div class="header">
+    <div class="label">Mario Leonhardt — Script</div>
+    <h1>Selbst<span>gespräch</span></h1>
+    <div class="meta">
+      <span>Reel / TikTok</span>
+      <span>45–60 Sek.</span>
+      <span>05. Juni 2026</span>
+    </div>
+  </div>
+
+  <div class="blocks">
+
+    <div class="block">
+      <div class="block-header">
+        <div class="block-tag">HOOK</div>
+        <div class="block-time">5 Sek.</div>
+      </div>
+      <div class="block-text">
+        Ich rede manchmal mit mir selbst. Nicht weil ich verrückt bin — sondern weil ich der Einzige bin, der weiß wovon ich rede.
+      </div>
+    </div>
+
+    <div class="block">
+      <div class="block-header">
+        <div class="block-tag">SETUP</div>
+        <div class="block-time">20 Sek.</div>
+      </div>
+      <div class="block-text">
+        Die Wissenschaft sagt: Menschen die mit sich selbst reden sind intelligenter. Klingt gut. Klingt nach mir. Mein Nachbar redet auch mit sich selbst — aber der zählt dabei seine Bier-Flaschen. Das zählt nicht.
+      </div>
+    </div>
+
+    <div class="block">
+      <div class="block-header">
+        <div class="block-tag">TWIST</div>
+        <div class="block-time">15 Sek.</div>
+      </div>
+      <div class="block-text">
+        Das Problem ist nur: ich bin nicht immer verfügbar. Manchmal bin ich beschäftigt. Manchmal hab ich keine Lust. Ich nenn das nicht faul — ich nenn das selektive Partizipation. An mir selbst.
+      </div>
+    </div>
+
+    <div class="block">
+      <div class="block-header">
+        <div class="block-tag">POINTE</div>
+        <div class="block-time">10 Sek.</div>
+      </div>
+      <div class="block-text">
+        Mein Therapeut sagt, das sei ein Problem. Ich hab ihm nicht geantwortet. Ich war gerade in einer wichtigen Beratung. Mit mir.
+      </div>
+    </div>
+
+  </div>
+
+  <div class="footer">
+    <div>
+      <div class="footer-name">Mario Leonhardt</div>
+      <div class="footer-sub">Die Welt. Täglich. Ungefiltert.</div>
+    </div>
+    <div class="duration">
+      <strong>~50</strong>
+      Sekunden
+    </div>
+  </div>
+
+</div>
+</body>
+</html>

@@ -8,11 +8,12 @@
     "start": "next start"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.20.0",
+    "@supabase/supabase-js": "^2.43.0",
+    "mp4-muxer": "^5.2.2",
     "next": "14.2.3",
     "react": "^18",
-    "react-dom": "^18",
-    "@supabase/supabase-js": "^2.43.0",
-    "@anthropic-ai/sdk": "^0.20.0"
+    "react-dom": "^18"
   },
   "devDependencies": {
     "@types/node": "^20",
