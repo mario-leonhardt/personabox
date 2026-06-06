@@ -489,11 +489,16 @@ export default function Home() {
                 <div style={{ padding: '32px 40px', flex: 1, overflowY: 'auto' }}>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
                     <div style={{ ...css.sectionTitle, marginTop: 0, marginBottom: 0, flex: 1 }}>Inhalte in die Box legen</div>
-                    {(active.contentItems || []).length > 0 && (
-                      <button style={css.btnPrimary} onClick={analyzeBox} disabled={analyzing}>
-                        {analyzing ? '⟳ Analysiert...' : '◈ Box analysieren'}
+                    <div style={{ display: 'flex', gap: 8 }}>
+                      <button style={{ ...css.btnSmall, width: 'auto' }} onClick={() => savePersona(active!)}>
+                        ↓ Speichern
                       </button>
-                    )}
+                      {(active.contentItems || []).length > 0 && (
+                        <button style={css.btnPrimary} onClick={analyzeBox} disabled={analyzing}>
+                          {analyzing ? '⟳ Analysiert...' : '◈ Box analysieren'}
+                        </button>
+                      )}
+                    </div>
                   </div>
                   <p style={{ color: 'var(--muted)', fontSize: 12, margin: '12px 0 20px', lineHeight: 1.7 }}>
                     LinkedIn-Posts, Interviews, Zitate, Beobachtungen. Claude strukturiert alles selbst.
@@ -520,7 +525,7 @@ export default function Home() {
                             <button onClick={() => setViewItem(item)} style={{ ...css.btnSmall, width: 'auto', fontSize: 10 }}>Anzeigen</button>
                           )}
                           {item.type === 'DATEI' && (
-                            <button onClick={() => downloadItem(item)} style={{ ...css.btnSmall, width: 'auto', fontSize: 10 }}>Speichern</button>
+                            <button onClick={() => downloadItem(item)} style={{ ...css.btnSmall, width: 'auto', fontSize: 10 }}>Download</button>
                           )}
                           <button onClick={() => removeContent(i)} style={{ background: 'none', border: 'none', color: 'var(--muted)', cursor: 'pointer', fontSize: 16, flexShrink: 0 }}>×</button>
                         </div>
@@ -639,7 +644,7 @@ export default function Home() {
             onClick={e => e.stopPropagation()}>
             <span style={{ fontFamily: 'DM Mono, monospace', fontSize: 11, color: 'var(--muted)', letterSpacing: '0.08em' }}>{viewItem.filename || 'Datei'}</span>
             <div style={{ display: 'flex', gap: 8 }}>
-              <button style={{ ...css.btnSmall, width: 'auto' }} onClick={() => downloadItem(viewItem)}>↓ Speichern</button>
+              <button style={{ ...css.btnSmall, width: 'auto' }} onClick={() => downloadItem(viewItem)}>↓ Download</button>
               <button style={{ ...css.btnSmall, width: 'auto' }} onClick={() => setViewItem(null)}>✕ Schließen</button>
             </div>
           </div>
