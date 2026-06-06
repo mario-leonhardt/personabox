@@ -228,10 +228,16 @@ export default function Home() {
       source.connect(analyser)
       const freqData = new Uint8Array(analyser.frequencyBinCount)
 
-      // Use the visible overlay canvas (guaranteed in DOM)
-      // Small delay to ensure canvas is mounted in the overlay
-      await new Promise(r => setTimeout(r, 100))
-      const canvas = recordingCanvasRef.current!
+      // Show overlay FIRST so React renders the canvas into the DOM
+      setIsRecording(true)
+      setRecordingTime(0)
+      recordingTimerRef.current = setInterval(() => setRecordingTime(t => t + 1), 1000)
+
+      // Wait for React to render the overlay and mount the canvas
+      await new Promise(r => setTimeout(r, 200))
+
+      const canvas = recordingCanvasRef.current
+      if (!canvas) { setStatus('Canvas nicht verfügbar'); setIsRecording(false); return }
       const ctx = canvas.getContext('2d')!
       const personaName = active.name || `${active.firstname} ${active.lastname}`
       const subtitle = [active.title, active.company].filter(Boolean).join(' · ')
@@ -310,8 +316,6 @@ export default function Home() {
       }
       mr.start(200)
       mediaRecorderRef.current = mr
-      setIsRecording(true); setRecordingTime(0)
-      recordingTimerRef.current = setInterval(() => setRecordingTime(t => t + 1), 1000)
     } catch {
       setStatus('Mikrofon-Zugriff verweigert')
     }
