@@ -385,14 +385,18 @@ export default function Home() {
           const img = new Image()
           img.onload = () => {
             const size = 72
-            const pad = 20
+            const pad = 40
             const cx = W - pad - size / 2
             const cy = pad + size / 2
             ctx.save()
             ctx.beginPath()
             ctx.arc(cx, cy, size / 2, 0, Math.PI * 2)
             ctx.clip()
-            ctx.drawImage(img, W - pad - size, pad, size, size)
+            // Cover-fit: skalieren ohne Verzerrung, zentriert croppen
+            const scale = Math.max(size / img.naturalWidth, size / img.naturalHeight)
+            const sw = img.naturalWidth * scale
+            const sh = img.naturalHeight * scale
+            ctx.drawImage(img, cx - sw / 2, cy - sh / 2, sw, sh)
             ctx.restore()
             // Subtle ring
             ctx.beginPath()
