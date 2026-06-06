@@ -227,89 +227,86 @@ export default function Home() {
       source.connect(analyser)
       const freqData = new Uint8Array(analyser.frequencyBinCount)
 
-      // Canvas for video frame
+      // Canvas for video — must be in DOM for captureStream to work
       const canvas = document.createElement('canvas')
       canvas.width = 1280; canvas.height = 720
+      canvas.style.cssText = 'position:fixed;top:-9999px;left:-9999px;'
+      document.body.appendChild(canvas)
       const ctx = canvas.getContext('2d')!
       const personaName = active.name || `${active.firstname} ${active.lastname}`
       const subtitle = [active.title, active.company].filter(Boolean).join(' · ')
       const startTime = Date.now()
-      let rafId = 0
 
       function drawFrame() {
         const elapsed = Math.floor((Date.now() - startTime) / 1000)
         const W = canvas.width, H = canvas.height
 
-        // Background
         ctx.fillStyle = '#0d1d3a'
         ctx.fillRect(0, 0, W, H)
 
-        // Persona name
         ctx.fillStyle = '#ffffff'
         ctx.font = 'italic 72px Georgia, serif'
         ctx.textAlign = 'center'
         ctx.fillText(personaName, W/2, H/2 - 60)
 
-        // Subtitle
         if (subtitle) {
           ctx.fillStyle = 'rgba(255,255,255,0.65)'
-          ctx.font = '16px monospace'
-          ctx.fillText(subtitle, W/2, H/2 - 14)
+          ctx.font = '18px monospace'
+          ctx.fillText(subtitle, W/2, H/2 - 8)
         }
 
-        // Live waveform from analyser
+        // Live waveform
         analyser.getByteFrequencyData(freqData)
         const bars = 40, barW = 14, gap = 8
         const totalW = bars * (barW + gap)
-        const startX = (W - totalW) / 2
+        const sx = (W - totalW) / 2
         for (let i = 0; i < bars; i++) {
           const val = freqData[Math.floor(i * freqData.length / bars)] / 255
-          const h = Math.max(4, val * 120 + 4)
-          const alpha = 0.35 + val * 0.55
-          ctx.fillStyle = `rgba(255,255,255,${alpha})`
-          const x = startX + i * (barW + gap)
-          const y = H/2 + 50 - h/2
-          ctx.beginPath()
-          ctx.roundRect(x, y, barW, h, 3)
-          ctx.fill()
+          const bh = Math.max(4, val * 130 + 4)
+          ctx.fillStyle = `rgba(255,255,255,${0.3 + val * 0.6})`
+          const x = sx + i * (barW + gap)
+          ctx.beginPath(); ctx.roundRect(x, H/2 + 55 - bh/2, barW, bh, 3); ctx.fill()
         }
 
-        // Timer — subtle, bottom right
+        // Timer
         const mins = String(Math.floor(elapsed/60)).padStart(2,'0')
         const secs = String(elapsed%60).padStart(2,'0')
         ctx.fillStyle = 'rgba(255,255,255,0.28)'
-        ctx.font = '13px monospace'
+        ctx.font = '14px monospace'
         ctx.textAlign = 'right'
-        ctx.fillText(`${mins}:${secs}`, W - 40, H - 28)
+        ctx.fillText(`${mins}:${secs}`, W - 40, H - 26)
         ctx.textAlign = 'center'
 
-        // Progress bar at bottom
-        const progress = elapsed / 120
+        // Progress line
         ctx.fillStyle = 'rgba(255,255,255,0.1)'
         ctx.fillRect(0, H - 3, W, 3)
         ctx.fillStyle = 'rgba(255,255,255,0.45)'
-        ctx.fillRect(0, H - 3, W * Math.min(progress, 1), 3)
-
-        if (mediaRecorderRef.current?.state === 'recording') rafId = requestAnimationFrame(drawFrame)
+        ctx.fillRect(0, H - 3, W * Math.min(elapsed / 120, 1), 3)
       }
+
+      // Use setInterval (reliable for offscreen canvas)
+      const drawInterval = setInterval(drawFrame, 1000 / 30)
       drawFrame()
 
       // Combine video + audio
       const videoStream = canvas.captureStream(30)
       const combined = new MediaStream([...videoStream.getVideoTracks(), ...audioStream.getAudioTracks()])
-      const mimeType = MediaRecorder.isTypeSupported('video/mp4;codecs=avc1') ? 'video/mp4' : 'video/webm'
+      const mimeType =
+        MediaRecorder.isTypeSupported('video/webm;codecs=vp9,opus') ? 'video/webm;codecs=vp9,opus' :
+        MediaRecorder.isTypeSupported('video/webm;codecs=vp8,opus') ? 'video/webm;codecs=vp8,opus' :
+        'video/webm'
       const mr = new MediaRecorder(combined, { mimeType })
       audioChunksRef.current = []
       mr.ondataavailable = e => { if (e.data.size > 0) audioChunksRef.current.push(e.data) }
       mr.onstop = () => {
-        cancelAnimationFrame(rafId)
-        const blob = new Blob(audioChunksRef.current, { type: mimeType })
-        const ext = mimeType.includes('mp4') ? 'mp4' : 'webm'
+        clearInterval(drawInterval)
+        document.body.removeChild(canvas)
+        const blob = new Blob(audioChunksRef.current, { type: 'video/webm' })
         const safeName = personaName.replace(/\s+/g, '_')
         const ts = new Date().toISOString().slice(0,16).replace('T','_').replace(':','-')
         const url = URL.createObjectURL(blob)
         const a = document.createElement('a')
-        a.href = url; a.download = `${safeName}_${ts}.${ext}`; a.click()
+        a.href = url; a.download = `${safeName}_${ts}.webm`; a.click()
         URL.revokeObjectURL(url)
         audioStream.getTracks().forEach(t => t.stop())
         videoStream.getTracks().forEach(t => t.stop())
