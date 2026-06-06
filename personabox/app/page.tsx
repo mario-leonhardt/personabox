@@ -55,6 +55,18 @@ export default function Home() {
     document.documentElement.setAttribute('data-theme', theme)
   }, [theme])
 
+  useEffect(() => {
+    if (!isRecording) return
+    const handleKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' || e.key === ' ') {
+        e.preventDefault()
+        stopRecording()
+      }
+    }
+    window.addEventListener('keydown', handleKey)
+    return () => window.removeEventListener('keydown', handleKey)
+  }, [isRecording])
+
   async function loadPersonas() {
     const { data } = await supabase.from('personas').select('*').order('created_at', { ascending: false })
     if (data) setPersonas(data)
@@ -398,12 +410,15 @@ export default function Home() {
         framerate: 1,
       })
       const duration_us = Math.round(audioBuffer.duration * 1_000_000)
-      const extra_us = 1_000_000 // 1s extra so cover stays visible after audio ends
       const bitmap = await createImageBitmap(canvas)
-      // Single keyframe covering audio + 1s extra — no black flash
-      const vframe = new VideoFrame(bitmap, { timestamp: 0, duration: duration_us + extra_us })
-      videoEncoder.encode(vframe, { keyFrame: true })
-      vframe.close()
+      // Encode at 1fps for full duration + 2s extra — prevents black frames reliably
+      const frameDur = 1_000_000
+      const numFrames = Math.ceil(audioBuffer.duration) + 2
+      for (let fi = 0; fi < numFrames; fi++) {
+        const vf = new VideoFrame(bitmap, { timestamp: fi * frameDur, duration: frameDur })
+        videoEncoder.encode(vf, { keyFrame: true })
+        vf.close()
+      }
       bitmap.close()
       await videoEncoder.flush()
       videoEncoder.close()
