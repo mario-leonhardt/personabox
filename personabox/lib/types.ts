@@ -10,6 +10,13 @@ export interface ImageItem {
   addedAt: string
 }
 
+export interface VoiceItem {
+  audioData: string  // base64 data URL (audio/webm)
+  duration: number   // seconds
+  createdAt: string
+  sentNote?: string  // z.B. "LinkedIn 05.06.26"
+}
+
 export interface Persona {
   id: string
   firstname: string
@@ -17,6 +24,7 @@ export interface Persona {
   name: string
   gender: string
   email: string
+  mobile: string
   title: string
   company: string
   industry: string
@@ -27,8 +35,11 @@ export interface Persona {
   privateGoal: string
   product: string
   keywords: string[]
+  linkedinHeadline: string
+  linkedinInfo: string
   contentItems: ContentItem[]
   imageItems: ImageItem[]
+  voiceItems: VoiceItem[]
   analysis?: string
   created_at?: string
 }

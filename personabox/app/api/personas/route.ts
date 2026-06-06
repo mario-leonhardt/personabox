@@ -19,7 +19,7 @@ export async function POST(req: NextRequest) {
   const body = await req.json()
   const { data, error } = await supabase
     .from('personas')
-    .upsert(body)
+    .upsert(body, { onConflict: 'id' })
     .select()
     .single()
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })

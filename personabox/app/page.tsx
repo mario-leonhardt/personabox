@@ -1,6 +1,6 @@
 'use client'
 import { useState, useEffect, useRef } from 'react'
-import { Persona, ContentItem, ImageItem } from '@/lib/types'
+import { Persona, ContentItem } from '@/lib/types'
 
 export default function Home() {
   const [personas, setPersonas] = useState<Persona[]>([])
@@ -10,9 +10,6 @@ export default function Home() {
   const [newFirstname, setNewFirstname] = useState('')
   const [newLastname, setNewLastname] = useState('')
   const [contentInput, setContentInput] = useState('')
-  const [expandedItems, setExpandedItems] = useState<Set<number>>(new Set())
-  const [imageDragOver, setImageDragOver] = useState(false)
-  const imageInputRef = useRef<HTMLInputElement>(null)
   const [kwInput, setKwInput] = useState('')
   const [emails, setEmails] = useState<any[]>([])
   const [numEmails, setNumEmails] = useState(3)
@@ -75,7 +72,7 @@ export default function Home() {
       gender: '', email: '',
       title: '', company: '', industry: '', location: '', birthday: '',
       language: 'formal', goal: '', privateGoal: '', product: '',
-      keywords: [], contentItems: [], imageItems: []
+      keywords: [], contentItems: []
     }
     await fetch('/api/personas', {
       method: 'POST',
@@ -117,72 +114,6 @@ export default function Home() {
     updateActive({ contentItems: items })
   }
 
-  function toggleExpand(i: number) {
-    setExpandedItems(prev => {
-      const next = new Set(prev)
-      if (next.has(i)) next.delete(i)
-      else next.add(i)
-      return next
-    })
-  }
-
-  function compressImage(file: File): Promise<string> {
-    return new Promise((resolve, reject) => {
-      const img = new Image()
-      const url = URL.createObjectURL(file)
-      img.onload = () => {
-        const MAX = 1400
-        let { width, height } = img
-        if (width > MAX || height > MAX) {
-          if (width > height) { height = Math.round(height * MAX / width); width = MAX }
-          else { width = Math.round(width * MAX / height); height = MAX }
-        }
-        const canvas = document.createElement('canvas')
-        canvas.width = width
-        canvas.height = height
-        const ctx = canvas.getContext('2d')!
-        ctx.drawImage(img, 0, 0, width, height)
-        URL.revokeObjectURL(url)
-        resolve(canvas.toDataURL('image/jpeg', 0.80))
-      }
-      img.onerror = reject
-      img.src = url
-    })
-  }
-
-  async function addImage(file: File) {
-    if (!active) return
-    if (!file.type.startsWith('image/')) return
-    try {
-      const data = await compressImage(file)
-      const item: ImageItem = { data, name: file.name, addedAt: new Date().toISOString() }
-      updateActive({ imageItems: [...(active.imageItems || []), item] })
-    } catch {
-      setStatus('Bild konnte nicht geladen werden')
-    }
-  }
-
-  function removeImage(i: number) {
-    if (!active) return
-    const items = [...(active.imageItems || [])]
-    items.splice(i, 1)
-    updateActive({ imageItems: items })
-  }
-
-  function handleImageFile(e: React.ChangeEvent<HTMLInputElement>) {
-    const files = e.target.files
-    if (!files) return
-    Array.from(files).forEach(addImage)
-    e.target.value = ''
-  }
-
-  function handleImageDrop(e: React.DragEvent<HTMLDivElement>) {
-    e.preventDefault()
-    setImageDragOver(false)
-    const files = Array.from(e.dataTransfer.files).filter(f => f.type.startsWith('image/'))
-    files.forEach(addImage)
-  }
-
   function addKeyword() {
     if (!kwInput.trim() || !active) return
     const kws = [...(active.keywords || [])]
@@ -205,15 +136,6 @@ export default function Home() {
     e.target.value = ''
   }
 
-  function handleDrop(e: React.DragEvent<HTMLDivElement>) {
-    e.preventDefault()
-    const file = e.dataTransfer.files?.[0]
-    if (!file) return
-    const reader = new FileReader()
-    reader.onload = ev => addContent(ev.target?.result as string, 'DATEI')
-    reader.readAsText(file)
-  }
-
   async function analyzeBox() {
     if (!active || !active.contentItems.length) return
     setAnalyzing(true)
@@ -225,10 +147,6 @@ export default function Home() {
         body: JSON.stringify({ persona: active })
       })
       const data = await res.json()
-      if (data.error) {
-        setStatus(`Fehler: ${data.error}`)
-        return
-      }
       if (data.result) {
         const r = data.result
         updateActive({
@@ -248,14 +166,12 @@ export default function Home() {
         })
         setStatus('Analyse abgeschlossen')
         setActiveTab('info')
-      } else {
-        setStatus('Fehler: Kein Ergebnis von der API')
       }
-    } catch (err: any) {
-      setStatus(`Fehler: ${err.message}`)
+    } catch {
+      setStatus('Fehler bei der Analyse')
     } finally {
       setAnalyzing(false)
-      setTimeout(() => setStatus(''), 8000)
+      setTimeout(() => setStatus(''), 3000)
     }
   }
 
@@ -496,33 +412,19 @@ export default function Home() {
                     LinkedIn-Posts, Interviews, Zitate, Beobachtungen. Claude strukturiert alles selbst.
                   </p>
 
-                  <div
-                    onClick={() => fileInputRef.current?.click()}
-                    onDrop={handleDrop}
-                    onDragOver={e => e.preventDefault()}
+                  <div onClick={() => fileInputRef.current?.click()}
                     style={{ border: '1px dashed var(--border)', borderRadius: 4, padding: 24, textAlign: 'center', color: 'var(--muted)', cursor: 'pointer', marginBottom: 16 }}>
-                    ↓ Datei ablegen oder klicken (.txt, .md)
+                    ↓ Datei ablegen oder klicken (.txt, .md, .html)
                   </div>
-                  <input ref={fileInputRef} type="file" accept=".txt,.md" style={{ display: 'none' }} onChange={handleFile} />
+                  <input ref={fileInputRef} type="file" accept=".txt,.md,.html" style={{ display: 'none' }} onChange={handleFile} />
 
-                  {(active.contentItems || []).map((item, i) => {
-                    const expanded = expandedItems.has(i)
-                    const isLong = item.text.length > 200
-                    return (
-                      <div key={i} style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 3, padding: '10px 14px', marginBottom: 8 }}>
-                        <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
-                          <div style={{ fontSize: 9, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--accent)', flexShrink: 0, marginTop: 3, width: 60 }}>{item.type}</div>
-                          <div style={{ flex: 1, fontSize: 12, whiteSpace: 'pre-wrap', wordBreak: 'break-word', ...(isLong && !expanded ? { maxHeight: 72, overflow: 'hidden' } : {}) }}>{item.text}</div>
-                          <button onClick={() => removeContent(i)} style={{ background: 'none', border: 'none', color: 'var(--muted)', cursor: 'pointer', fontSize: 16, flexShrink: 0 }}>×</button>
-                        </div>
-                        {isLong && (
-                          <button onClick={() => toggleExpand(i)} style={{ background: 'none', border: 'none', color: 'var(--accent)', cursor: 'pointer', fontSize: 10, letterSpacing: '0.08em', marginTop: 6, padding: 0 }}>
-                            {expanded ? '↑ Weniger anzeigen' : '↓ Alles anzeigen'}
-                          </button>
-                        )}
-                      </div>
-                    )
-                  })}
+                  {(active.contentItems || []).map((item, i) => (
+                    <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 10, background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 3, padding: '10px 14px', marginBottom: 8 }}>
+                      <div style={{ fontSize: 9, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--accent)', flexShrink: 0, marginTop: 3, width: 60 }}>{item.type}</div>
+                      <div style={{ flex: 1, fontSize: 12, maxHeight: 80, overflow: 'hidden', whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{item.text}</div>
+                      <button onClick={() => removeContent(i)} style={{ background: 'none', border: 'none', color: 'var(--muted)', cursor: 'pointer', fontSize: 16 }}>×</button>
+                    </div>
+                  ))}
 
                   <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
                     <textarea value={contentInput} onChange={e => setContentInput(e.target.value)}
@@ -530,32 +432,6 @@ export default function Home() {
                       placeholder="Text, LinkedIn-Post, Zitat, Beobachtung..." />
                     <button style={{ ...css.btnSmall, width: 'auto', alignSelf: 'flex-end' }} onClick={() => addContent(contentInput)}>+</button>
                   </div>
-
-                  {/* IMAGE SECTION */}
-                  <div style={{ ...css.sectionTitle, marginTop: 32 }}>Bilder</div>
-                  <div
-                    onClick={() => imageInputRef.current?.click()}
-                    onDrop={handleImageDrop}
-                    onDragOver={e => { e.preventDefault(); setImageDragOver(true) }}
-                    onDragLeave={() => setImageDragOver(false)}
-                    style={{ border: `1px dashed ${imageDragOver ? 'var(--accent)' : 'var(--border)'}`, borderRadius: 4, padding: 24, textAlign: 'center', color: imageDragOver ? 'var(--accent)' : 'var(--muted)', cursor: 'pointer', marginBottom: 16, background: imageDragOver ? 'rgba(200,240,80,0.04)' : 'transparent', transition: 'all 0.15s' }}>
-                    ↓ Screenshot oder Bild ablegen (PNG, JPG, GIF)
-                  </div>
-                  <input ref={imageInputRef} type="file" accept="image/*" multiple style={{ display: 'none' }} onChange={handleImageFile} />
-
-                  {(active.imageItems || []).length > 0 && (
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: 10, marginBottom: 16 }}>
-                      {(active.imageItems || []).map((img, i) => (
-                        <div key={i} style={{ position: 'relative', borderRadius: 4, overflow: 'hidden', border: '1px solid var(--border)', background: 'var(--surface)', aspectRatio: '4/3' }}>
-                          <img src={img.data} alt={img.name} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
-                          <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, background: 'rgba(0,0,0,0.55)', padding: '4px 8px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                            <span style={{ fontSize: 9, color: 'rgba(255,255,255,0.7)', letterSpacing: '0.04em', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '80%' }}>{img.name}</span>
-                            <button onClick={() => removeImage(i)} style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,0.8)', cursor: 'pointer', fontSize: 14, lineHeight: 1, padding: 0 }}>×</button>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
                 </div>
               )}
 
