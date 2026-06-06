@@ -21,7 +21,7 @@ export default function Home() {
   const [analyzing, setAnalyzing] = useState(false)
   const [status, setStatus] = useState('')
   const [viewItem, setViewItem] = useState<{ text: string; filename?: string } | null>(null)
-  const [theme, setTheme] = useState<'dark' | 'light'>('dark')
+  const [theme, setTheme] = useState<'dark' | 'light' | 'pastel'>('dark')
   const fileInputRef = useRef<HTMLInputElement>(null)
   const firstnameRef = useRef<HTMLInputElement>(null)
 
@@ -334,10 +334,10 @@ export default function Home() {
         <h1 style={{ fontFamily: 'Instrument Serif, serif', fontSize: 28, fontWeight: 400, color: 'var(--accent)', flex: 1 }}>Persona Box</h1>
         <span style={{ color: 'var(--muted)', fontSize: 11, letterSpacing: '0.1em', textTransform: 'uppercase' }}>Outreach Intelligence</span>
         <button
-          onClick={() => setTheme(t => t === 'dark' ? 'light' : 'dark')}
+          onClick={() => setTheme(t => t === 'dark' ? 'light' : t === 'light' ? 'pastel' : 'dark')}
           style={{ ...css.btnSmall, width: 'auto', padding: '6px 14px', fontSize: 16, marginLeft: 16 }}
           title="Theme wechseln">
-          {theme === 'dark' ? '☀️' : '🌙'}
+          {theme === 'dark' ? '☀️' : theme === 'light' ? '🎊' : '🌙'}
         </button>
       </header>
 
@@ -563,8 +563,11 @@ export default function Home() {
                         <div key={i} style={{ position: 'relative', borderRadius: 4, overflow: 'hidden', border: '1px solid var(--border)', background: 'var(--surface)', aspectRatio: '4/3' }}>
                           <img src={img.data} alt={img.name} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
                           <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, background: 'rgba(0,0,0,0.55)', padding: '4px 8px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                            <span style={{ fontSize: 9, color: 'rgba(255,255,255,0.7)', letterSpacing: '0.04em', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '80%' }}>{img.name}</span>
-                            <button onClick={() => removeImage(i)} style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,0.8)', cursor: 'pointer', fontSize: 14, lineHeight: 1, padding: 0 }}>×</button>
+                            <span style={{ fontSize: 9, color: 'rgba(255,255,255,0.7)', letterSpacing: '0.04em', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '70%' }}>{img.name}</span>
+                            <div style={{ display: 'flex', gap: 6 }}>
+                              <button onClick={() => { const a = document.createElement('a'); a.href = img.data; a.download = img.name; a.click() }} style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,0.8)', cursor: 'pointer', fontSize: 12, lineHeight: 1, padding: 0 }} title="Download">↓</button>
+                              <button onClick={() => removeImage(i)} style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,0.8)', cursor: 'pointer', fontSize: 14, lineHeight: 1, padding: 0 }}>×</button>
+                            </div>
                           </div>
                         </div>
                       ))}
