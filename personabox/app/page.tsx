@@ -649,18 +649,23 @@ export default function Home() {
             </div>
           </div>
           <div style={{ flex: 1, overflow: 'hidden' }} onClick={e => e.stopPropagation()}>
-            {viewItem.filename?.endsWith('.html') ? (
-              <iframe
-                srcDoc={viewItem.text}
-                style={{ width: '100%', height: '100%', border: 'none', background: '#fff' }}
-                sandbox="allow-scripts"
-                title={viewItem.filename}
-              />
-            ) : (
-              <pre style={{ margin: 0, padding: 24, color: 'var(--text)', fontFamily: 'DM Mono, monospace', fontSize: 12, lineHeight: 1.7, overflowY: 'auto', height: '100%', boxSizing: 'border-box', whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
-                {viewItem.text}
-              </pre>
-            )}
+            {(() => {
+              const trimmed = viewItem.text.trimStart()
+              const isHtml = viewItem.filename?.endsWith('.html') || trimmed.startsWith('<!DOCTYPE') || trimmed.startsWith('<html')
+              const isMd = !isHtml && (viewItem.filename?.endsWith('.md') || trimmed.startsWith('# ') || trimmed.startsWith('## '))
+              const mdSrc = `<!DOCTYPE html><html><head><meta charset="UTF-8"><script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"><\/script><style>body{font-family:Georgia,serif;max-width:720px;margin:60px auto;padding:0 32px;line-height:1.8;font-size:17px;color:#1a1a1a}h1,h2,h3{font-weight:600;margin-top:1.6em}h1{font-size:2em}h2{font-size:1.4em}h3{font-size:1.1em}p{margin:1em 0}code{background:#f4f4f4;padding:2px 6px;border-radius:3px;font-size:.9em}pre{background:#f4f4f4;padding:16px;border-radius:6px;overflow-x:auto}blockquote{border-left:3px solid #ccc;margin:0;padding:0 16px;color:#555}ul,ol{padding-left:1.5em}img{max-width:100%}</style></head><body><div id="c"></div><script>document.getElementById('c').innerHTML=marked.parse(${JSON.stringify(viewItem.text)})<\/script></body></html>`
+              if (isHtml) return (
+                <iframe srcDoc={viewItem.text} style={{ width: '100%', height: '100%', border: 'none', background: '#fff' }} sandbox="allow-scripts allow-same-origin allow-forms" title={viewItem.filename} />
+              )
+              if (isMd) return (
+                <iframe srcDoc={mdSrc} style={{ width: '100%', height: '100%', border: 'none', background: '#fff' }} sandbox="allow-scripts" title={viewItem.filename} />
+              )
+              return (
+                <pre style={{ margin: 0, padding: 24, color: 'var(--text)', fontFamily: 'DM Mono, monospace', fontSize: 12, lineHeight: 1.7, overflowY: 'auto', height: '100%', boxSizing: 'border-box', whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
+                  {viewItem.text}
+                </pre>
+              )
+            })()}
           </div>
         </div>
       )}
