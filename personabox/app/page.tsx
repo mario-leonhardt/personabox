@@ -412,7 +412,7 @@ export default function Home() {
       videoEncoder.configure({
         codec: 'avc1.42001f',
         width: W, height: H,
-        bitrate: 800_000,
+        bitrate: 4_000_000,
         framerate: 1,
       })
       const duration_us = Math.round(audioBuffer.duration * 1_000_000)
