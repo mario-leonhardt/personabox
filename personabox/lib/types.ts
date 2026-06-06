@@ -16,6 +16,7 @@ export interface VoiceItem {
   duration: number   // seconds
   createdAt: string  // ISO string
   sentNote?: string  // optional status/sent note
+  coverImage?: string // base64 data URL — shown top-right in video export
 }
 
 export interface Persona {

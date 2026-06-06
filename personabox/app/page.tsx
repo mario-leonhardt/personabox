@@ -379,7 +379,35 @@ export default function Home() {
         ctx.fillText(subtitle.toUpperCase(), W / 2, nameY + 48)
       }
 
-      // Tiny play hint — bottom right, very restrained
+      // Cover image — top right, circle
+      if (item.coverImage) {
+        await new Promise<void>(resolve => {
+          const img = new Image()
+          img.onload = () => {
+            const size = 72
+            const pad = 20
+            const cx = W - pad - size / 2
+            const cy = pad + size / 2
+            ctx.save()
+            ctx.beginPath()
+            ctx.arc(cx, cy, size / 2, 0, Math.PI * 2)
+            ctx.clip()
+            ctx.drawImage(img, W - pad - size, pad, size, size)
+            ctx.restore()
+            // Subtle ring
+            ctx.beginPath()
+            ctx.arc(cx, cy, size / 2, 0, Math.PI * 2)
+            ctx.strokeStyle = 'rgba(255,255,255,0.25)'
+            ctx.lineWidth = 1.5
+            ctx.stroke()
+            resolve()
+          }
+          img.onerror = () => resolve()
+          img.src = item.coverImage!
+        })
+      }
+
+      // Tiny play hint — bottom center, very restrained
       ctx.fillStyle = 'rgba(255,255,255,0.18)'
       ctx.font = '11px -apple-system, Helvetica Neue, sans-serif'
       ctx.fillText('▶  Tippen zum Anhören', W / 2, H - 36)
@@ -493,6 +521,24 @@ export default function Home() {
     if (!active) return
     const items = [...(active.voiceItems || [])]
     items[i] = { ...items[i], sentNote: note }
+    updateActive({ voiceItems: items })
+  }
+
+  async function setVoiceCoverImage(i: number, file: File) {
+    const reader = new FileReader()
+    reader.onload = () => {
+      if (!active) return
+      const items = [...(active.voiceItems || [])]
+      items[i] = { ...items[i], coverImage: reader.result as string }
+      updateActive({ voiceItems: items })
+    }
+    reader.readAsDataURL(file)
+  }
+
+  function removeVoiceCoverImage(i: number) {
+    if (!active) return
+    const items = [...(active.voiceItems || [])]
+    items[i] = { ...items[i], coverImage: undefined }
     updateActive({ voiceItems: items })
   }
 
@@ -912,13 +958,29 @@ export default function Home() {
 
                       <audio src={item.audioData} controls style={{ width: '100%', marginBottom: 12, height: 36 }} />
 
-                      <div>
-                        <label style={css.label}>Versand-Notiz</label>
-                        <input
-                          style={css.input}
-                          value={item.sentNote || ''}
-                          onChange={e => updateVoiceSentNote(i, e.target.value)}
-                          placeholder="z.B. Über LinkedIn verschickt am 05.06.2026..." />
+                      <div style={{ display: 'flex', gap: 16, alignItems: 'flex-start', marginBottom: 12 }}>
+                        <div style={{ flex: 1 }}>
+                          <label style={css.label}>Versand-Notiz</label>
+                          <input
+                            style={css.input}
+                            value={item.sentNote || ''}
+                            onChange={e => updateVoiceSentNote(i, e.target.value)}
+                            placeholder="z.B. Über LinkedIn verschickt am 05.06.2026..." />
+                        </div>
+                        <div style={{ flexShrink: 0 }}>
+                          <label style={css.label}>Video-Bild</label>
+                          {item.coverImage ? (
+                            <div style={{ position: 'relative', width: 48, height: 48 }}>
+                              <img src={item.coverImage} style={{ width: 48, height: 48, borderRadius: '50%', objectFit: 'cover', border: '1px solid var(--border)' }} alt="" />
+                              <button onClick={() => removeVoiceCoverImage(i)} style={{ position: 'absolute', top: -6, right: -6, background: 'var(--danger)', border: 'none', borderRadius: '50%', width: 16, height: 16, color: '#fff', fontSize: 10, cursor: 'pointer', lineHeight: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>×</button>
+                            </div>
+                          ) : (
+                            <label style={{ ...css.btnSmall, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 4, padding: '6px 10px' }}>
+                              + Bild
+                              <input type="file" accept="image/*" style={{ display: 'none' }} onChange={e => { if (e.target.files?.[0]) setVoiceCoverImage(i, e.target.files[0]) }} />
+                            </label>
+                          )}
+                        </div>
                       </div>
                     </div>
                   ))}
