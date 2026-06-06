@@ -360,9 +360,15 @@ export default function Home() {
       ctx.fillRect(0, 0, W, H)
 
       ctx.textAlign = 'center'
-      // Name — large, italic, serif
       ctx.fillStyle = '#ffffff'
-      ctx.font = 'italic 72px Georgia, serif'
+      // Auto-size name to fit — max 64px, scale down until it fits in 88% of width
+      let nameFontSize = 64
+      const maxNameWidth = W * 0.88
+      ctx.font = `italic ${nameFontSize}px Georgia, serif`
+      while (ctx.measureText(personaName).width > maxNameWidth && nameFontSize > 24) {
+        nameFontSize -= 2
+        ctx.font = `italic ${nameFontSize}px Georgia, serif`
+      }
       const nameY = subtitle ? H / 2 - 18 : H / 2 + 24
       ctx.fillText(personaName, W / 2, nameY)
 
@@ -411,11 +417,12 @@ export default function Home() {
       })
       const duration_us = Math.round(audioBuffer.duration * 1_000_000)
       const bitmap = await createImageBitmap(canvas)
-      // Encode at 1fps for full duration + 2s extra — prevents black frames reliably
+      // 1fps frames covering exactly the audio duration — no extra time
       const frameDur = 1_000_000
-      const numFrames = Math.ceil(audioBuffer.duration) + 2
+      const numFrames = Math.ceil(audioBuffer.duration)
       for (let fi = 0; fi < numFrames; fi++) {
-        const vf = new VideoFrame(bitmap, { timestamp: fi * frameDur, duration: frameDur })
+        const remaining = duration_us - fi * frameDur
+        const vf = new VideoFrame(bitmap, { timestamp: fi * frameDur, duration: Math.min(frameDur, remaining) })
         videoEncoder.encode(vf, { keyFrame: true })
         vf.close()
       }
