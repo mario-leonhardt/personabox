@@ -27,6 +27,7 @@ export default function Home() {
   const mediaRecorderRef = useRef<MediaRecorder | null>(null)
   const audioChunksRef = useRef<Blob[]>([])
   const recordingTimerRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  const recordingCanvasRef = useRef<HTMLCanvasElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const firstnameRef = useRef<HTMLInputElement>(null)
 
@@ -227,11 +228,10 @@ export default function Home() {
       source.connect(analyser)
       const freqData = new Uint8Array(analyser.frequencyBinCount)
 
-      // Canvas for video — must be in DOM for captureStream to work
-      const canvas = document.createElement('canvas')
-      canvas.width = 1280; canvas.height = 720
-      canvas.style.cssText = 'position:fixed;top:-9999px;left:-9999px;'
-      document.body.appendChild(canvas)
+      // Use the visible overlay canvas (guaranteed in DOM)
+      // Small delay to ensure canvas is mounted in the overlay
+      await new Promise(r => setTimeout(r, 100))
+      const canvas = recordingCanvasRef.current!
       const ctx = canvas.getContext('2d')!
       const personaName = active.name || `${active.firstname} ${active.lastname}`
       const subtitle = [active.title, active.company].filter(Boolean).join(' · ')
@@ -255,7 +255,6 @@ export default function Home() {
           ctx.fillText(subtitle, W/2, H/2 - 8)
         }
 
-        // Live waveform
         analyser.getByteFrequencyData(freqData)
         const bars = 40, barW = 14, gap = 8
         const totalW = bars * (barW + gap)
@@ -268,7 +267,6 @@ export default function Home() {
           ctx.beginPath(); ctx.roundRect(x, H/2 + 55 - bh/2, barW, bh, 3); ctx.fill()
         }
 
-        // Timer
         const mins = String(Math.floor(elapsed/60)).padStart(2,'0')
         const secs = String(elapsed%60).padStart(2,'0')
         ctx.fillStyle = 'rgba(255,255,255,0.28)'
@@ -277,18 +275,15 @@ export default function Home() {
         ctx.fillText(`${mins}:${secs}`, W - 40, H - 26)
         ctx.textAlign = 'center'
 
-        // Progress line
         ctx.fillStyle = 'rgba(255,255,255,0.1)'
         ctx.fillRect(0, H - 3, W, 3)
         ctx.fillStyle = 'rgba(255,255,255,0.45)'
         ctx.fillRect(0, H - 3, W * Math.min(elapsed / 120, 1), 3)
       }
 
-      // Use setInterval (reliable for offscreen canvas)
       const drawInterval = setInterval(drawFrame, 1000 / 30)
       drawFrame()
 
-      // Combine video + audio
       const videoStream = canvas.captureStream(30)
       const combined = new MediaStream([...videoStream.getVideoTracks(), ...audioStream.getAudioTracks()])
       const mimeType =
@@ -300,9 +295,8 @@ export default function Home() {
       mr.ondataavailable = e => { if (e.data.size > 0) audioChunksRef.current.push(e.data) }
       mr.onstop = () => {
         clearInterval(drawInterval)
-        document.body.removeChild(canvas)
         const blob = new Blob(audioChunksRef.current, { type: 'video/webm' })
-        const safeName = personaName.replace(/\s+/g, '_')
+        const safeName = personaName.replace(/[^a-zA-Z0-9_\-]/g, '_')
         const ts = new Date().toISOString().slice(0,16).replace('T','_').replace(':','-')
         const url = URL.createObjectURL(blob)
         const a = document.createElement('a')
@@ -799,23 +793,12 @@ export default function Home() {
 
       {/* RECORDING OVERLAY */}
       {isRecording && active && (
-        <div style={{ position: 'fixed', inset: 0, background: 'linear-gradient(135deg, #0f2d6b 0%, #1a4da8 60%, #0a1f4e 100%)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', zIndex: 300 }}>
-          <div style={{ color: 'rgba(255,255,255,0.45)', fontSize: 10, letterSpacing: '0.2em', textTransform: 'uppercase', marginBottom: 32 }}>Sprachaufnahme läuft</div>
-          <div style={{ fontFamily: 'Instrument Serif, serif', fontSize: 56, fontStyle: 'italic', color: '#fff', marginBottom: 6, textAlign: 'center' }}>
-            {active.name || `${active.firstname} ${active.lastname}`}
-          </div>
-          {(active.title || active.company) && (
-            <div style={{ color: 'rgba(255,255,255,0.5)', fontSize: 13, marginBottom: 56, letterSpacing: '0.04em' }}>
-              {[active.title, active.company].filter(Boolean).join(' · ')}
-            </div>
-          )}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 64 }}>
-            <span className="blink" style={{ width: 12, height: 12, borderRadius: '50%', background: '#ff3b30', display: 'inline-block' }} />
-            <span style={{ fontFamily: 'DM Mono, monospace', fontSize: 36, color: '#fff', letterSpacing: '0.06em' }}>
-              {String(Math.floor(recordingTime / 60)).padStart(2, '0')}:{String(recordingTime % 60).padStart(2, '0')}
-            </span>
-          </div>
-          <button onClick={stopRecording} style={{ background: '#fff', color: '#0f2d6b', border: 'none', padding: '16px 48px', borderRadius: 40, fontSize: 13, fontFamily: 'DM Mono, monospace', cursor: 'pointer', letterSpacing: '0.08em', fontWeight: 600 }}>
+        <div style={{ position: 'fixed', inset: 0, zIndex: 300, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          {/* Canvas IS the background — exactly what gets recorded */}
+          <canvas ref={recordingCanvasRef} width={1280} height={720}
+            style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', display: 'block' }} />
+          {/* Stop button floats above canvas, not recorded */}
+          <button onClick={stopRecording} style={{ position: 'relative', zIndex: 1, background: 'rgba(255,255,255,0.15)', backdropFilter: 'blur(8px)', color: '#fff', border: '1px solid rgba(255,255,255,0.3)', padding: '14px 44px', borderRadius: 40, fontSize: 13, fontFamily: 'DM Mono, monospace', cursor: 'pointer', letterSpacing: '0.08em' }}>
             ◼ &nbsp;Stopp & Speichern
           </button>
         </div>
