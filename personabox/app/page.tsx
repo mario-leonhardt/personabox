@@ -22,6 +22,11 @@ export default function Home() {
   const [status, setStatus] = useState('')
   const [viewItem, setViewItem] = useState<{ text: string; filename?: string } | null>(null)
   const [theme, setTheme] = useState<'dark' | 'light' | 'pastel'>('dark')
+  const [isRecording, setIsRecording] = useState(false)
+  const [recordingTime, setRecordingTime] = useState(0)
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null)
+  const audioChunksRef = useRef<Blob[]>([])
+  const recordingTimerRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const firstnameRef = useRef<HTMLInputElement>(null)
 
@@ -207,6 +212,44 @@ export default function Home() {
     const items = [...(active.imageItems || [])]
     items.splice(i, 1)
     updateActive({ imageItems: items })
+  }
+
+  async function startRecording() {
+    if (!active) return
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+      const mimeType = MediaRecorder.isTypeSupported('audio/mp4') ? 'audio/mp4' : 'audio/webm'
+      const mr = new MediaRecorder(stream, { mimeType })
+      audioChunksRef.current = []
+      mr.ondataavailable = e => { if (e.data.size > 0) audioChunksRef.current.push(e.data) }
+      mr.onstop = () => {
+        const blob = new Blob(audioChunksRef.current, { type: mimeType })
+        const ext = mimeType.includes('mp4') ? 'mp4' : 'webm'
+        const personaName = (active.name || `${active.firstname}_${active.lastname}`).replace(/\s+/g, '_')
+        const ts = new Date().toISOString().slice(0, 16).replace('T', '_').replace(':', '-')
+        const filename = `${personaName}_${ts}.${ext}`
+        const url = URL.createObjectURL(blob)
+        const a = document.createElement('a')
+        a.href = url; a.download = filename; a.click()
+        URL.revokeObjectURL(url)
+        stream.getTracks().forEach(t => t.stop())
+        setIsRecording(false)
+        setRecordingTime(0)
+        if (recordingTimerRef.current) clearInterval(recordingTimerRef.current)
+      }
+      mr.start()
+      mediaRecorderRef.current = mr
+      setIsRecording(true)
+      setRecordingTime(0)
+      recordingTimerRef.current = setInterval(() => setRecordingTime(t => t + 1), 1000)
+    } catch {
+      setStatus('Mikrofon-Zugriff verweigert')
+    }
+  }
+
+  function stopRecording() {
+    mediaRecorderRef.current?.stop()
+    if (recordingTimerRef.current) clearInterval(recordingTimerRef.current)
   }
 
   function handleImageFile(e: React.ChangeEvent<HTMLInputElement>) {
@@ -573,6 +616,11 @@ export default function Home() {
                       ))}
                     </div>
                   )}
+                  {/* VOICE SECTION */}
+                  <div style={{ ...css.sectionTitle, marginTop: 32 }}>Sprachaufnahme</div>
+                  <button onClick={startRecording} style={{ display: 'flex', alignItems: 'center', gap: 10, background: '#1a56db', color: '#fff', border: 'none', borderRadius: 4, padding: '10px 20px', cursor: 'pointer', fontFamily: 'DM Mono, monospace', fontSize: 12, letterSpacing: '0.05em' }}>
+                    <span style={{ fontSize: 16 }}>🎙</span> Aufnahme starten
+                  </button>
                 </div>
               )}
 
@@ -670,6 +718,30 @@ export default function Home() {
               )
             })()}
           </div>
+        </div>
+      )}
+
+      {/* RECORDING OVERLAY */}
+      {isRecording && active && (
+        <div style={{ position: 'fixed', inset: 0, background: 'linear-gradient(135deg, #0f2d6b 0%, #1a4da8 60%, #0a1f4e 100%)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', zIndex: 300 }}>
+          <div style={{ color: 'rgba(255,255,255,0.45)', fontSize: 10, letterSpacing: '0.2em', textTransform: 'uppercase', marginBottom: 32 }}>Sprachaufnahme läuft</div>
+          <div style={{ fontFamily: 'Instrument Serif, serif', fontSize: 56, fontStyle: 'italic', color: '#fff', marginBottom: 6, textAlign: 'center' }}>
+            {active.name || `${active.firstname} ${active.lastname}`}
+          </div>
+          {(active.title || active.company) && (
+            <div style={{ color: 'rgba(255,255,255,0.5)', fontSize: 13, marginBottom: 56, letterSpacing: '0.04em' }}>
+              {[active.title, active.company].filter(Boolean).join(' · ')}
+            </div>
+          )}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 64 }}>
+            <span className="blink" style={{ width: 12, height: 12, borderRadius: '50%', background: '#ff3b30', display: 'inline-block' }} />
+            <span style={{ fontFamily: 'DM Mono, monospace', fontSize: 36, color: '#fff', letterSpacing: '0.06em' }}>
+              {String(Math.floor(recordingTime / 60)).padStart(2, '0')}:{String(recordingTime % 60).padStart(2, '0')}
+            </span>
+          </div>
+          <button onClick={stopRecording} style={{ background: '#fff', color: '#0f2d6b', border: 'none', padding: '16px 48px', borderRadius: 40, fontSize: 13, fontFamily: 'DM Mono, monospace', cursor: 'pointer', letterSpacing: '0.08em', fontWeight: 600 }}>
+            ◼ &nbsp;Stopp & Speichern
+          </button>
         </div>
       )}
 
