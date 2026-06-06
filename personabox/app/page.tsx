@@ -219,6 +219,14 @@ export default function Home() {
     try {
       const audioStream = await navigator.mediaDevices.getUserMedia({ audio: true })
 
+      // Web Audio analyser for live waveform
+      const audioCtx = new AudioContext()
+      const analyser = audioCtx.createAnalyser()
+      analyser.fftSize = 64
+      const source = audioCtx.createMediaStreamSource(audioStream)
+      source.connect(analyser)
+      const freqData = new Uint8Array(analyser.frequencyBinCount)
+
       // Canvas for video frame
       const canvas = document.createElement('canvas')
       canvas.width = 1280; canvas.height = 720
@@ -232,57 +240,55 @@ export default function Home() {
         const elapsed = Math.floor((Date.now() - startTime) / 1000)
         const W = canvas.width, H = canvas.height
 
-        // Background gradient
-        const g = ctx.createLinearGradient(0, 0, W, H)
-        g.addColorStop(0, '#0a1f4e'); g.addColorStop(0.5, '#1a4da8'); g.addColorStop(1, '#0f2d6b')
-        ctx.fillStyle = g; ctx.fillRect(0, 0, W, H)
-
-        // Subtle noise overlay
-        ctx.fillStyle = 'rgba(255,255,255,0.015)'
-        for (let i = 0; i < 80; i++) {
-          ctx.fillRect(Math.random()*W, Math.random()*H, 1, 1)
-        }
-
-        // Label
-        ctx.fillStyle = 'rgba(255,255,255,0.35)'
-        ctx.font = '500 13px "DM Mono", monospace'
-        ctx.textAlign = 'center'
-        ctx.letterSpacing = '0.15em'
-        ctx.fillText('SPRACHAUFNAHME', W/2, H/2 - 130)
+        // Background
+        ctx.fillStyle = '#0d1d3a'
+        ctx.fillRect(0, 0, W, H)
 
         // Persona name
         ctx.fillStyle = '#ffffff'
-        ctx.font = 'italic 64px Georgia, serif'
-        ctx.letterSpacing = '0'
-        ctx.fillText(personaName, W/2, H/2 - 48)
+        ctx.font = 'italic 72px Georgia, serif'
+        ctx.textAlign = 'center'
+        ctx.fillText(personaName, W/2, H/2 - 60)
 
         // Subtitle
         if (subtitle) {
-          ctx.fillStyle = 'rgba(255,255,255,0.45)'
-          ctx.font = '14px "DM Mono", monospace'
-          ctx.letterSpacing = '0.05em'
-          ctx.fillText(subtitle, W/2, H/2 + 4)
+          ctx.fillStyle = 'rgba(255,255,255,0.65)'
+          ctx.font = '16px monospace'
+          ctx.fillText(subtitle, W/2, H/2 - 14)
         }
 
-        // Timer
-        const mins = String(Math.floor(elapsed/60)).padStart(2,'0')
-        const secs = String(elapsed%60).padStart(2,'0')
-        ctx.fillStyle = '#ffffff'
-        ctx.font = '600 42px "DM Mono", monospace'
-        ctx.letterSpacing = '0.06em'
-        ctx.fillText(`${mins}:${secs}`, W/2 + 20, H/2 + 90)
-
-        // Blinking red dot
-        if (Math.floor(Date.now()/550) % 2 === 0) {
-          ctx.fillStyle = '#ff3b30'
+        // Live waveform from analyser
+        analyser.getByteFrequencyData(freqData)
+        const bars = 40, barW = 14, gap = 8
+        const totalW = bars * (barW + gap)
+        const startX = (W - totalW) / 2
+        for (let i = 0; i < bars; i++) {
+          const val = freqData[Math.floor(i * freqData.length / bars)] / 255
+          const h = Math.max(4, val * 120 + 4)
+          const alpha = 0.35 + val * 0.55
+          ctx.fillStyle = `rgba(255,255,255,${alpha})`
+          const x = startX + i * (barW + gap)
+          const y = H/2 + 50 - h/2
           ctx.beginPath()
-          ctx.arc(W/2 - 52, H/2 + 80, 9, 0, Math.PI*2)
+          ctx.roundRect(x, y, barW, h, 3)
           ctx.fill()
         }
 
-        // Bottom line
-        ctx.fillStyle = 'rgba(255,255,255,0.12)'
-        ctx.fillRect(W/2 - 180, H/2 + 120, 360, 1)
+        // Timer — subtle, bottom right
+        const mins = String(Math.floor(elapsed/60)).padStart(2,'0')
+        const secs = String(elapsed%60).padStart(2,'0')
+        ctx.fillStyle = 'rgba(255,255,255,0.28)'
+        ctx.font = '13px monospace'
+        ctx.textAlign = 'right'
+        ctx.fillText(`${mins}:${secs}`, W - 40, H - 28)
+        ctx.textAlign = 'center'
+
+        // Progress bar at bottom
+        const progress = elapsed / 120
+        ctx.fillStyle = 'rgba(255,255,255,0.1)'
+        ctx.fillRect(0, H - 3, W, 3)
+        ctx.fillStyle = 'rgba(255,255,255,0.45)'
+        ctx.fillRect(0, H - 3, W * Math.min(progress, 1), 3)
 
         if (mediaRecorderRef.current?.state === 'recording') rafId = requestAnimationFrame(drawFrame)
       }
@@ -307,6 +313,7 @@ export default function Home() {
         URL.revokeObjectURL(url)
         audioStream.getTracks().forEach(t => t.stop())
         videoStream.getTracks().forEach(t => t.stop())
+        audioCtx.close()
         setIsRecording(false); setRecordingTime(0)
         if (recordingTimerRef.current) clearInterval(recordingTimerRef.current)
       }
