@@ -220,20 +220,10 @@ export default function Home() {
     try {
       const audioStream = await navigator.mediaDevices.getUserMedia({ audio: true })
 
-      // Web Audio analyser for live waveform
-      const audioCtx = new AudioContext()
-      const analyser = audioCtx.createAnalyser()
-      analyser.fftSize = 64
-      const source = audioCtx.createMediaStreamSource(audioStream)
-      source.connect(analyser)
-      const freqData = new Uint8Array(analyser.frequencyBinCount)
-
-      // Show overlay FIRST so React renders the canvas into the DOM
+      // Show overlay first → canvas mounts in DOM
       setIsRecording(true)
       setRecordingTime(0)
       recordingTimerRef.current = setInterval(() => setRecordingTime(t => t + 1), 1000)
-
-      // Wait for React to render the overlay and mount the canvas
       await new Promise(r => setTimeout(r, 200))
 
       const canvas = recordingCanvasRef.current
@@ -241,83 +231,57 @@ export default function Home() {
       const ctx = canvas.getContext('2d')!
       const personaName = active.name || `${active.firstname} ${active.lastname}`
       const subtitle = [active.title, active.company].filter(Boolean).join(' · ')
-      const startTime = Date.now()
 
-      function drawFrame() {
-        const elapsed = Math.floor((Date.now() - startTime) / 1000)
+      // Draw static cover (redrawn every second to keep stream alive)
+      function drawCover() {
         const W = canvas.width, H = canvas.height
-
         ctx.fillStyle = '#0d1d3a'
         ctx.fillRect(0, 0, W, H)
-
-        ctx.fillStyle = '#ffffff'
-        ctx.font = 'italic 72px Georgia, serif'
         ctx.textAlign = 'center'
-        ctx.fillText(personaName, W/2, H/2 - 60)
-
+        ctx.fillStyle = '#ffffff'
+        ctx.font = 'italic 76px Georgia, serif'
+        ctx.fillText(personaName, W / 2, H / 2 - 30)
         if (subtitle) {
           ctx.fillStyle = 'rgba(255,255,255,0.65)'
-          ctx.font = '18px monospace'
-          ctx.fillText(subtitle, W/2, H/2 - 8)
+          ctx.font = '20px monospace'
+          ctx.fillText(subtitle, W / 2, H / 2 + 36)
         }
-
-        analyser.getByteFrequencyData(freqData)
-        const bars = 40, barW = 14, gap = 8
-        const totalW = bars * (barW + gap)
-        const sx = (W - totalW) / 2
-        for (let i = 0; i < bars; i++) {
-          const val = freqData[Math.floor(i * freqData.length / bars)] / 255
-          const bh = Math.max(4, val * 130 + 4)
-          ctx.fillStyle = `rgba(255,255,255,${0.3 + val * 0.6})`
-          const x = sx + i * (barW + gap)
-          ctx.beginPath(); ctx.roundRect(x, H/2 + 55 - bh/2, barW, bh, 3); ctx.fill()
-        }
-
-        const mins = String(Math.floor(elapsed/60)).padStart(2,'0')
-        const secs = String(elapsed%60).padStart(2,'0')
-        ctx.fillStyle = 'rgba(255,255,255,0.28)'
-        ctx.font = '14px monospace'
-        ctx.textAlign = 'right'
-        ctx.fillText(`${mins}:${secs}`, W - 40, H - 26)
-        ctx.textAlign = 'center'
-
-        ctx.fillStyle = 'rgba(255,255,255,0.1)'
-        ctx.fillRect(0, H - 3, W, 3)
-        ctx.fillStyle = 'rgba(255,255,255,0.45)'
-        ctx.fillRect(0, H - 3, W * Math.min(elapsed / 120, 1), 3)
+        ctx.fillStyle = 'rgba(255,255,255,0.18)'
+        ctx.fillRect(W / 2 - 80, H / 2 + 72, 160, 1)
       }
 
-      const drawInterval = setInterval(drawFrame, 1000 / 30)
-      drawFrame()
+      drawCover()
+      const drawInterval = setInterval(drawCover, 1000)
 
-      const videoStream = canvas.captureStream(30)
+      const videoStream = canvas.captureStream(1)
       const combined = new MediaStream([...videoStream.getVideoTracks(), ...audioStream.getAudioTracks()])
       const mimeType =
+        MediaRecorder.isTypeSupported('video/mp4') ? 'video/mp4' :
         MediaRecorder.isTypeSupported('video/webm;codecs=vp9,opus') ? 'video/webm;codecs=vp9,opus' :
-        MediaRecorder.isTypeSupported('video/webm;codecs=vp8,opus') ? 'video/webm;codecs=vp8,opus' :
         'video/webm'
+      const ext = mimeType.includes('mp4') ? 'mp4' : 'webm'
       const mr = new MediaRecorder(combined, { mimeType })
       audioChunksRef.current = []
       mr.ondataavailable = e => { if (e.data.size > 0) audioChunksRef.current.push(e.data) }
       mr.onstop = () => {
         clearInterval(drawInterval)
-        const blob = new Blob(audioChunksRef.current, { type: 'video/webm' })
+        const blob = new Blob(audioChunksRef.current, { type: mimeType })
         const safeName = personaName.replace(/[^a-zA-Z0-9_\-]/g, '_')
-        const ts = new Date().toISOString().slice(0,16).replace('T','_').replace(':','-')
+        const ts = new Date().toISOString().slice(0, 16).replace('T', '_').replace(':', '-')
         const url = URL.createObjectURL(blob)
         const a = document.createElement('a')
-        a.href = url; a.download = `${safeName}_${ts}.webm`; a.click()
+        a.href = url; a.download = `${safeName}_${ts}.${ext}`; a.click()
         URL.revokeObjectURL(url)
         audioStream.getTracks().forEach(t => t.stop())
         videoStream.getTracks().forEach(t => t.stop())
-        audioCtx.close()
         setIsRecording(false); setRecordingTime(0)
         if (recordingTimerRef.current) clearInterval(recordingTimerRef.current)
       }
-      mr.start(200)
+      mr.start(1000)
       mediaRecorderRef.current = mr
     } catch {
       setStatus('Mikrofon-Zugriff verweigert')
+      setIsRecording(false)
     }
   }
 
