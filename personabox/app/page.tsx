@@ -27,7 +27,7 @@ export default function Home() {
   const [analyzing, setAnalyzing] = useState(false)
   const [status, setStatus] = useState('')
   const [viewItem, setViewItem] = useState<{ text: string; filename?: string } | null>(null)
-  const [theme, setTheme] = useState<'dark' | 'light' | 'pastel'>('dark')
+  const [theme, setTheme] = useState<'dark' | 'light' | 'pastel'>('pastel')
   const [isRecording, setIsRecording] = useState(false)
   const [recordingTime, setRecordingTime] = useState(0)
   const [saving, setSaving] = useState(false)
@@ -571,7 +571,7 @@ export default function Home() {
         <h1 style={{ fontFamily: 'Instrument Serif, serif', fontSize: 28, fontWeight: 400, color: 'var(--accent)', flex: 1 }}>Persona Box</h1>
         <span style={{ color: 'var(--muted)', fontSize: 11, letterSpacing: '0.1em', textTransform: 'uppercase' }}>Outreach Intelligence</span>
         <button
-          onClick={() => setTheme(t => t === 'dark' ? 'light' : t === 'light' ? 'pastel' : 'dark')}
+          onClick={() => setTheme(t => t === 'pastel' ? 'dark' : t === 'dark' ? 'light' : 'pastel')}
           style={{ ...css.btnSmall, width: 'auto', padding: '6px 14px', fontSize: 16, marginLeft: 16 }}
           title="Theme wechseln">
           {theme === 'dark' ? '☀️' : theme === 'light' ? '🎊' : '🌙'}
