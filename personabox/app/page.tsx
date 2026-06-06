@@ -325,7 +325,7 @@ export default function Home() {
     setExportingIdx(index)
     try {
       // --- Cover zeichnen ---
-      const W = 1280, H = 720
+      const W = 640, H = 480
       const canvas = document.createElement('canvas')
       canvas.width = W; canvas.height = H
       const ctx = canvas.getContext('2d')!
@@ -398,20 +398,17 @@ export default function Home() {
         framerate: 1,
       })
       const duration_us = Math.round(audioBuffer.duration * 1_000_000)
+      const extra_us = 1_000_000 // 1s extra so cover stays visible after audio ends
       const bitmap = await createImageBitmap(canvas)
-      // Frame 1: covers full duration
-      const vframe = new VideoFrame(bitmap, { timestamp: 0, duration: duration_us })
+      // Single keyframe covering audio + 1s extra — no black flash
+      const vframe = new VideoFrame(bitmap, { timestamp: 0, duration: duration_us + extra_us })
       videoEncoder.encode(vframe, { keyFrame: true })
       vframe.close()
-      // Frame 2: tiny duplicate at the end so players don't flash black
-      const vframe2 = new VideoFrame(bitmap, { timestamp: duration_us, duration: 40_000 })
-      videoEncoder.encode(vframe2, { keyFrame: false })
-      vframe2.close()
       bitmap.close()
       await videoEncoder.flush()
       videoEncoder.close()
 
-      // Audio: AAC mono
+      // Audio: AAC mono — with 80ms fade-out to prevent pop
       const audioEncoder = new AudioEncoder({
         output: (chunk, meta) => muxer.addAudioChunk(chunk, meta),
         error: e => console.error('AudioEncoder:', e),
@@ -423,7 +420,12 @@ export default function Home() {
         bitrate: 128_000,
       })
       const CHUNK = 4096
-      const ch = audioBuffer.getChannelData(0)
+      const rawCh = audioBuffer.getChannelData(0)
+      const ch = new Float32Array(rawCh) // mutable copy
+      const fadeOutSamples = Math.floor(audioBuffer.sampleRate * 0.08) // 80ms
+      for (let i = Math.max(0, ch.length - fadeOutSamples); i < ch.length; i++) {
+        ch[i] *= (ch.length - i) / fadeOutSamples
+      }
       for (let i = 0; i < ch.length; i += CHUNK) {
         const count = Math.min(CHUNK, ch.length - i)
         const ts = Math.round((i / audioBuffer.sampleRate) * 1_000_000)
