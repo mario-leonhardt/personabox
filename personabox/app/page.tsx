@@ -217,30 +217,102 @@ export default function Home() {
   async function startRecording() {
     if (!active) return
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
-      const mimeType = MediaRecorder.isTypeSupported('audio/mp4') ? 'audio/mp4' : 'audio/webm'
-      const mr = new MediaRecorder(stream, { mimeType })
+      const audioStream = await navigator.mediaDevices.getUserMedia({ audio: true })
+
+      // Canvas for video frame
+      const canvas = document.createElement('canvas')
+      canvas.width = 1280; canvas.height = 720
+      const ctx = canvas.getContext('2d')!
+      const personaName = active.name || `${active.firstname} ${active.lastname}`
+      const subtitle = [active.title, active.company].filter(Boolean).join(' · ')
+      const startTime = Date.now()
+      let rafId = 0
+
+      function drawFrame() {
+        const elapsed = Math.floor((Date.now() - startTime) / 1000)
+        const W = canvas.width, H = canvas.height
+
+        // Background gradient
+        const g = ctx.createLinearGradient(0, 0, W, H)
+        g.addColorStop(0, '#0a1f4e'); g.addColorStop(0.5, '#1a4da8'); g.addColorStop(1, '#0f2d6b')
+        ctx.fillStyle = g; ctx.fillRect(0, 0, W, H)
+
+        // Subtle noise overlay
+        ctx.fillStyle = 'rgba(255,255,255,0.015)'
+        for (let i = 0; i < 80; i++) {
+          ctx.fillRect(Math.random()*W, Math.random()*H, 1, 1)
+        }
+
+        // Label
+        ctx.fillStyle = 'rgba(255,255,255,0.35)'
+        ctx.font = '500 13px "DM Mono", monospace'
+        ctx.textAlign = 'center'
+        ctx.letterSpacing = '0.15em'
+        ctx.fillText('SPRACHAUFNAHME', W/2, H/2 - 130)
+
+        // Persona name
+        ctx.fillStyle = '#ffffff'
+        ctx.font = 'italic 64px Georgia, serif'
+        ctx.letterSpacing = '0'
+        ctx.fillText(personaName, W/2, H/2 - 48)
+
+        // Subtitle
+        if (subtitle) {
+          ctx.fillStyle = 'rgba(255,255,255,0.45)'
+          ctx.font = '14px "DM Mono", monospace'
+          ctx.letterSpacing = '0.05em'
+          ctx.fillText(subtitle, W/2, H/2 + 4)
+        }
+
+        // Timer
+        const mins = String(Math.floor(elapsed/60)).padStart(2,'0')
+        const secs = String(elapsed%60).padStart(2,'0')
+        ctx.fillStyle = '#ffffff'
+        ctx.font = '600 42px "DM Mono", monospace'
+        ctx.letterSpacing = '0.06em'
+        ctx.fillText(`${mins}:${secs}`, W/2 + 20, H/2 + 90)
+
+        // Blinking red dot
+        if (Math.floor(Date.now()/550) % 2 === 0) {
+          ctx.fillStyle = '#ff3b30'
+          ctx.beginPath()
+          ctx.arc(W/2 - 52, H/2 + 80, 9, 0, Math.PI*2)
+          ctx.fill()
+        }
+
+        // Bottom line
+        ctx.fillStyle = 'rgba(255,255,255,0.12)'
+        ctx.fillRect(W/2 - 180, H/2 + 120, 360, 1)
+
+        if (mediaRecorderRef.current?.state === 'recording') rafId = requestAnimationFrame(drawFrame)
+      }
+      drawFrame()
+
+      // Combine video + audio
+      const videoStream = canvas.captureStream(30)
+      const combined = new MediaStream([...videoStream.getVideoTracks(), ...audioStream.getAudioTracks()])
+      const mimeType = MediaRecorder.isTypeSupported('video/mp4;codecs=avc1') ? 'video/mp4' : 'video/webm'
+      const mr = new MediaRecorder(combined, { mimeType })
       audioChunksRef.current = []
       mr.ondataavailable = e => { if (e.data.size > 0) audioChunksRef.current.push(e.data) }
       mr.onstop = () => {
+        cancelAnimationFrame(rafId)
         const blob = new Blob(audioChunksRef.current, { type: mimeType })
         const ext = mimeType.includes('mp4') ? 'mp4' : 'webm'
-        const personaName = (active.name || `${active.firstname}_${active.lastname}`).replace(/\s+/g, '_')
-        const ts = new Date().toISOString().slice(0, 16).replace('T', '_').replace(':', '-')
-        const filename = `${personaName}_${ts}.${ext}`
+        const safeName = personaName.replace(/\s+/g, '_')
+        const ts = new Date().toISOString().slice(0,16).replace('T','_').replace(':','-')
         const url = URL.createObjectURL(blob)
         const a = document.createElement('a')
-        a.href = url; a.download = filename; a.click()
+        a.href = url; a.download = `${safeName}_${ts}.${ext}`; a.click()
         URL.revokeObjectURL(url)
-        stream.getTracks().forEach(t => t.stop())
-        setIsRecording(false)
-        setRecordingTime(0)
+        audioStream.getTracks().forEach(t => t.stop())
+        videoStream.getTracks().forEach(t => t.stop())
+        setIsRecording(false); setRecordingTime(0)
         if (recordingTimerRef.current) clearInterval(recordingTimerRef.current)
       }
-      mr.start()
+      mr.start(200)
       mediaRecorderRef.current = mr
-      setIsRecording(true)
-      setRecordingTime(0)
+      setIsRecording(true); setRecordingTime(0)
       recordingTimerRef.current = setInterval(() => setRecordingTime(t => t + 1), 1000)
     } catch {
       setStatus('Mikrofon-Zugriff verweigert')
